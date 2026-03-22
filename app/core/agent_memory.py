@@ -1,7 +1,7 @@
 """
-Input: Agent分析结果、历史决策
-Output: 记忆存取接口
-Pos: app/core/agent_memory.py - Agent长期记忆和经验学习
+Input: Agent分析结果、历史决策、语义查询文本
+Output: 记忆存取接口、语义相似历史检索结果
+Pos: app/core/agent_memory.py - Agent长期记忆、经验学习与语义检索
 
 一旦我被修改，请更新我的头部注释，以及所属文件夹的md。
 """
@@ -48,6 +48,68 @@ class AgentMemory:
         filename = os.path.join(MEMORY_DIR, f"{stock_code}_history.json")
         history = self._load_file(filename)
         return history[-limit:]
+
+    def search_similar(self, stock_code: str, query: str, top_k: int = 3) -> List[Dict]:
+        """语义搜索相似的历史分析记录（基于TF-IDF + 余弦相似度）"""
+        history = self.get_history(stock_code, limit=50)
+        if not history or not query:
+            return []
+
+        try:
+            from sklearn.feature_extraction.text import TfidfVectorizer
+            from sklearn.metrics.pairwise import cosine_similarity
+
+            # 构建历史文本
+            texts = []
+            for h in history:
+                d = h.get('decision', {})
+                text = f"{d.get('action', '')} {d.get('reasoning', '')} {h.get('risk_level', '')}"
+                texts.append(text)
+
+            if not texts:
+                return []
+
+            # TF-IDF向量化
+            vectorizer = TfidfVectorizer(max_features=500)
+            all_texts = texts + [query]
+            tfidf_matrix = vectorizer.fit_transform(all_texts)
+
+            # 计算查询与历史的相似度
+            query_vec = tfidf_matrix[-1:]
+            history_vecs = tfidf_matrix[:-1]
+            similarities = cosine_similarity(query_vec, history_vecs)[0]
+
+            # 按相似度排序返回top_k
+            top_indices = similarities.argsort()[-top_k:][::-1]
+            results = []
+            for idx in top_indices:
+                if similarities[idx] > 0.1:  # 最低相似度阈值
+                    results.append({
+                        **history[idx],
+                        'similarity': float(similarities[idx])
+                    })
+            return results
+        except ImportError:
+            logger.warning("scikit-learn未安装，语义搜索不可用")
+            return []
+        except Exception as e:
+            logger.warning(f"语义搜索失败: {e}")
+            return []
+
+    def get_semantic_context(self, stock_code: str, current_analysis: str, top_k: int = 3) -> str:
+        """生成语义相关的历史上下文（供Agent参考）"""
+        similar = self.search_similar(stock_code, current_analysis, top_k)
+        if not similar:
+            return ""
+
+        lines = ["=== 语义相关历史分析 ==="]
+        for s in similar:
+            d = s.get('decision', {})
+            lines.append(
+                f"[{s.get('timestamp', '')}] (相似度:{s.get('similarity', 0):.2f}) "
+                f"{d.get('action', 'N/A')} - {d.get('reasoning', '')[:100]}"
+            )
+        return '\n'.join(lines)
 
     def get_context_prompt(self, stock_code: str) -> str:
         """生成历史上下文提示（供Agent使用）"""

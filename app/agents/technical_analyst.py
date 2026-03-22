@@ -39,7 +39,18 @@ class TechnicalAnalystAgent:
             # 用AI增强分析
             client = get_ai_client()
             if client:
-                prompt = f"""你是资深技术分析师。基于以下技术指标数据，给出专业分析：
+                # 注入历史反思上下文
+                reflection_context = ""
+                try:
+                    from app.agents.reflection import ReflectionAgent
+                    reflection_context = ReflectionAgent.get_reflection_prompt(stock_code)
+                except ImportError:
+                    pass
+
+                prompt = ""
+                if reflection_context:
+                    prompt = reflection_context + "\n\n"
+                prompt += f"""你是资深技术分析师。基于以下技术指标数据，给出专业分析：
 
 股票代码: {stock_code}
 评分: {result.get('score', 'N/A')}/100

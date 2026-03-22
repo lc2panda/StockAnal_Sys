@@ -79,7 +79,15 @@ def build_analysis_graph(
     # 决策节点始终在最后
     graph.add_node("decision", DecisionMakerAgent.analyze)
     graph.add_edge(last_node, "decision")
-    graph.add_edge("decision", END)
+
+    # 反思节点（决策后执行，从历史中学习优化）
+    try:
+        from app.agents.reflection import ReflectionAgent
+        graph.add_node("reflection", ReflectionAgent.reflect)
+        graph.add_edge("decision", "reflection")
+        graph.add_edge("reflection", END)
+    except ImportError:
+        graph.add_edge("decision", END)
 
     return graph.compile()
 
@@ -131,6 +139,15 @@ def run_agent_analysis(
         'errors': [],
     }
 
+    # 注入自适应策略
+    try:
+        from app.agents.strategy_evolver import get_strategy_evolver
+        strategy_prompt = get_strategy_evolver().get_strategy_prompt(stock_code)
+        if strategy_prompt:
+            initial_state['messages'] = [{"role": "system", "content": strategy_prompt}]
+    except Exception:
+        pass
+
     # 发布分析开始事件
     try:
         from app.core.event_bus import get_event_bus, EVENT_ANALYSIS_STARTED
@@ -151,6 +168,17 @@ def run_agent_analysis(
                 'stock_code': stock_code,
                 'decision': result.get('final_decision'),
             })
+        except Exception:
+            pass
+
+        # 触发策略演化（基于历史反思）
+        try:
+            from app.agents.strategy_evolver import get_strategy_evolver
+            from app.agents.reflection import ReflectionAgent
+            evolver = get_strategy_evolver()
+            past_reflections = ReflectionAgent.get_past_reflections(stock_code, limit=5)
+            if len(past_reflections) >= 3:
+                evolver.evolve_strategy(stock_code, past_reflections)
         except Exception:
             pass
 

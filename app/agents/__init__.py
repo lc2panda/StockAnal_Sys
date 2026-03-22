@@ -13,6 +13,7 @@ from .capital_flow_analyst import CapitalFlowAnalystAgent
 from .sentiment_analyst import SentimentAnalystAgent
 from .bull_researcher import BullResearcherAgent
 from .bear_researcher import BearResearcherAgent
+from .reflection import ReflectionAgent
 
 try:
     from .investors import InvestorCoordinator
@@ -28,4 +29,5 @@ __all__ = [
     'SentimentAnalystAgent',
     'BullResearcherAgent',
     'BearResearcherAgent',
+    'ReflectionAgent',
 ]

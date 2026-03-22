@@ -1,7 +1,7 @@
 """
-Input: StockAnalysisState (所有已填充的分析报告)
+Input: StockAnalysisState (所有已填充的分析报告) + 语义相关历史决策
 Output: StockAnalysisState (final_decision已填充, progress=100)
-Pos: app/agents/decision_maker.py - 投资决策Agent，综合所有分析结果
+Pos: app/agents/decision_maker.py - 投资决策Agent，综合所有分析结果与语义历史记忆
 
 一旦我被修改，请更新我的头部注释，以及所属文件夹的md。
 """
@@ -39,6 +39,19 @@ class DecisionMakerAgent:
             reports.append(f"【看空论据】{state['bear_case'][:300]}")
         if state.get('risk_assessment') and 'error' not in state.get('risk_assessment', {}):
             reports.append(f"【风险评估】{str(state['risk_assessment'])[:300]}")
+
+        # 注入语义相关的历史决策
+        try:
+            from app.core.agent_memory import get_agent_memory
+            memory = get_agent_memory()
+            current_summary = ' '.join([str(r)[:100] for r in reports])
+            semantic_context = memory.get_semantic_context(
+                state['stock_code'], current_summary, top_k=3
+            )
+            if semantic_context:
+                reports.append(f"【历史参考】{semantic_context}")
+        except Exception:
+            pass
 
         reports_text = chr(10).join(reports)
         prompt = f"""你是一位资深投资组合经理。基于以下多维度分析结果，做出最终投资决策。
