@@ -4,6 +4,7 @@ Output: StockAnalysisState (bull_case已填充)
 Pos: 看多研究员Agent，纯LLM驱动，从乐观角度寻找买入理由
 一旦我被修改，请更新我的头部注释，以及所属文件夹的md。
 """
+import json
 import logging
 from typing import Dict, Any
 
@@ -25,8 +26,9 @@ class BullResearcherAgent:
         try:
             client = get_ai_client()
             if not client:
+                # State定义bull_case为str类型，不能返回dict
                 return {
-                    'bull_case': {'error': 'AI客户端不可用'},
+                    'bull_case': 'AI客户端不可用，无法生成看多分析',
                     'execution_log': state.get('execution_log', []) + [
                         {'agent': '看多研究员', 'status': 'failed', 'error': 'AI客户端不可用'}
                     ]
@@ -65,8 +67,9 @@ class BullResearcherAgent:
             )
 
             if error:
+                # State定义bull_case为str类型，不能返回dict
                 return {
-                    'bull_case': {'error': f'AI分析失败: {error}'},
+                    'bull_case': f'AI分析失败: {error}',
                     'execution_log': state.get('execution_log', []) + [
                         {'agent': '看多研究员', 'status': 'failed', 'error': str(error)}
                     ]
@@ -74,11 +77,12 @@ class BullResearcherAgent:
 
             bull_analysis = get_completion_content(response)
 
+            # State定义bull_case为str类型，直接返回分析文本
+            # 如果需要保留perspective元数据，以前缀方式嵌入
+            bull_case_text = bull_analysis if isinstance(bull_analysis, str) else json.dumps(bull_analysis, ensure_ascii=False)
+
             return {
-                'bull_case': {
-                    'analysis': bull_analysis,
-                    'perspective': 'bullish'
-                },
+                'bull_case': bull_case_text,
                 'execution_log': state.get('execution_log', []) + [
                     {'agent': '看多研究员', 'status': 'success'}
                 ]
@@ -86,8 +90,9 @@ class BullResearcherAgent:
 
         except Exception as e:
             logger.error(f"看多分析失败: {e}")
+            # State定义bull_case为str类型，不能返回dict
             return {
-                'bull_case': {'error': str(e)},
+                'bull_case': f'看多分析失败: {str(e)}',
                 'execution_log': state.get('execution_log', []) + [
                     {'agent': '看多研究员', 'status': 'failed', 'error': str(e)}
                 ]

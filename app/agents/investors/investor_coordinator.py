@@ -84,8 +84,17 @@ class InvestorCoordinator:
             'timestamp': time.strftime('%Y-%m-%d %H:%M:%S')
         })
 
+        # 将各投资者结果打包到State定义的investor_opinions字段中
+        # State不包含investor_buffett等独立字段，需统一归入investor_opinions
+        investor_opinions = {
+            'buffett': results.get('investor_buffett', {}),
+            'munger': results.get('investor_munger', {}),
+            'lynch': results.get('investor_lynch', {}),
+            'damodaran': results.get('investor_damodaran', {}),
+        }
+
         return {
-            **results,
+            'investor_opinions': investor_opinions,
             'investor_consensus': consensus,
             'execution_log': execution_log
         }

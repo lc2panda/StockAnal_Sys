@@ -27,11 +27,17 @@ class CapitalFlowAnalystAgent:
         try:
             analyzer = CapitalFlowAnalyzer()
 
+            # akshare资金流向接口需要 'sh'/'sz' 格式的market参数
+            # 将 'A' 转换为基于股票代码的市场标识
+            flow_market = market_type
+            if market_type == 'A':
+                flow_market = 'sh' if stock_code.startswith('6') else 'sz'
+
             # 获取个股资金流向
-            flow_data = analyzer.get_individual_fund_flow(stock_code, market_type)
+            flow_data = analyzer.get_individual_fund_flow(stock_code, flow_market)
 
             # 计算资金流向评分
-            score_result = analyzer.calculate_capital_flow_score(stock_code, market_type)
+            score_result = analyzer.calculate_capital_flow_score(stock_code, flow_market)
 
             result = {
                 'flow_data': flow_data,

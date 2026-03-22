@@ -4,6 +4,7 @@ Output: StockAnalysisState (bear_case已填充)
 Pos: 看空研究员Agent，纯LLM驱动，从悲观角度寻找风险因素
 一旦我被修改，请更新我的头部注释，以及所属文件夹的md。
 """
+import json
 import logging
 from typing import Dict, Any
 
@@ -25,8 +26,9 @@ class BearResearcherAgent:
         try:
             client = get_ai_client()
             if not client:
+                # State定义bear_case为str类型，不能返回dict
                 return {
-                    'bear_case': {'error': 'AI客户端不可用'},
+                    'bear_case': 'AI客户端不可用，无法生成看空分析',
                     'execution_log': state.get('execution_log', []) + [
                         {'agent': '看空研究员', 'status': 'failed', 'error': 'AI客户端不可用'}
                     ]
@@ -65,8 +67,9 @@ class BearResearcherAgent:
             )
 
             if error:
+                # State定义bear_case为str类型，不能返回dict
                 return {
-                    'bear_case': {'error': f'AI分析失败: {error}'},
+                    'bear_case': f'AI分析失败: {error}',
                     'execution_log': state.get('execution_log', []) + [
                         {'agent': '看空研究员', 'status': 'failed', 'error': str(error)}
                     ]
@@ -74,11 +77,11 @@ class BearResearcherAgent:
 
             bear_analysis = get_completion_content(response)
 
+            # State定义bear_case为str类型，直接返回分析文本
+            bear_case_text = bear_analysis if isinstance(bear_analysis, str) else json.dumps(bear_analysis, ensure_ascii=False)
+
             return {
-                'bear_case': {
-                    'analysis': bear_analysis,
-                    'perspective': 'bearish'
-                },
+                'bear_case': bear_case_text,
                 'execution_log': state.get('execution_log', []) + [
                     {'agent': '看空研究员', 'status': 'success'}
                 ]
@@ -86,8 +89,9 @@ class BearResearcherAgent:
 
         except Exception as e:
             logger.error(f"看空分析失败: {e}")
+            # State定义bear_case为str类型，不能返回dict
             return {
-                'bear_case': {'error': str(e)},
+                'bear_case': f'看空分析失败: {str(e)}',
                 'execution_log': state.get('execution_log', []) + [
                     {'agent': '看空研究员', 'status': 'failed', 'error': str(e)}
                 ]

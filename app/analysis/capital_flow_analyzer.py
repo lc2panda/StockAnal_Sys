@@ -126,6 +126,16 @@ class CapitalFlowAnalyzer:
         try:
             self.logger.info(f"Getting fund flow for stock: {stock_code}, market: {market_type}")
 
+            # 转换market参数为akshare期望的 'sh'/'sz' 格式
+            # 'A'/'a'/None/空字符串 均需根据股票代码自动判断
+            if market_type in ('A', 'a', None, ''):
+                if stock_code.startswith('6'):
+                    market_type = "sh"
+                elif stock_code.startswith('0') or stock_code.startswith('3'):
+                    market_type = "sz"
+                else:
+                    market_type = "sh"  # 默认上海
+
             # 检查缓存
             cache_key = f"individual_fund_flow_{stock_code}_{market_type}"
             if cache_key in self.data_cache:
@@ -134,7 +144,7 @@ class CapitalFlowAnalyzer:
                 if (datetime.now() - cache_time).total_seconds() < 3600:
                     return cached_data
 
-            # 如果未提供市场类型，则根据股票代码判断
+            # 以下分支已被上面的统一转换覆盖，保留作为防御性兜底
             if not market_type:
                 if stock_code.startswith('6'):
                     market_type = "sh"
